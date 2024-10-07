@@ -28,6 +28,7 @@ defmodule Membrane.Template.Mixfile do
 
   def application do
     [
+      mod: {Membrane.OpenTelemetry.Plugs.Application, []},
       extra_applications: []
     ]
   end
