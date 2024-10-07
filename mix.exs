@@ -37,7 +37,8 @@ defmodule Membrane.Template.Mixfile do
 
   defp deps do
     [
-      {:membrane_core, github: "membraneframework/membrane_core", branch: "additional-telemetry-events"},
+      {:membrane_core,
+       github: "membraneframework/membrane_core", branch: "additional-telemetry-events"},
       {:membrane_opentelemetry, "~> 0.1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
