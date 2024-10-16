@@ -123,10 +123,31 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp set_span_attributes(component_state) do
     name =
       case component_state do
-        %{name: name} -> name
+        %{name: name} -> name |> inspect()
         %{} -> "Pipeline #{self() |> inspect()}"
       end
 
     Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, name)
+
+    type = component_state.module.membrane_component_type() |> inspect()
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_type, type)
+
+    module = component_state.module |> inspect()
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_module, module)
+
+    # name =
+    #   case component_state do
+    #     %{name: name} -> name |> inspect()
+    #     %{} -> "Pipeline #{self() |> inspect()}"
+    #   end
+
+    # type = component_state.module.membrane_component_type() |> inspect()
+    # module = component_state.module |> inspect()
+
+    # Membrane.OpenTelemetry.set_attributes(@span_id,
+    #   component_state: name,
+    #   component_type: type,
+    #   component_module: module
+    # )
   end
 end
