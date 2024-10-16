@@ -57,14 +57,14 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   @spec end_span_if_element(:telemetry.event_name(), map(), map(), any()) :: :ok
   def end_span_if_element(_name, _measurements, metadata, _config) do
-    if metadata.component_state.module.componenty_type() == :element do
+    if metadata.component_state.module.component_type() == :element do
       do_end_span()
     end
   end
 
   @spec end_span_if_parent(:telemetry.event_name(), map(), map(), any()) :: :ok
   def end_span_if_parent(_name, _measurements, metadata, _config) do
-    if metadata.component_state.module.componenty_type() in [:bin, :pipeline] do
+    if metadata.component_state.module.component_type() in [:bin, :pipeline] do
       do_end_span()
     end
   end
