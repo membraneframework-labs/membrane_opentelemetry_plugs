@@ -17,7 +17,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_start_span(component_type, component_state)
 
-  defp do_start_span(:pipeline, _component_state) do
+  defp do_start_span(:pipeline, component_state) do
     Membrane.OpenTelemetry.start_span(@span_id)
     Process.put(@pdict_key_span_alive?, true)
 
@@ -27,6 +27,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     |> ETSWrapper.store_span_and_pipeline(pipeline)
 
     ETSWrapper.store_pipeline_offspring(pipeline)
+    set_span_attributes(component_state)
 
     Task.start(__MODULE__, :pipeline_monitor, [pipeline])
   end
@@ -42,6 +43,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     |> ETSWrapper.store_span_and_pipeline(pipeline)
 
     ETSWrapper.store_pipeline_offspring(pipeline)
+    set_span_attributes(component_state)
   end
 
   defp do_start_span(:element, component_state) do
@@ -50,10 +52,24 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
     Membrane.OpenTelemetry.start_span(@span_id, parent_span: parent_span_ctx)
     Process.put(@pdict_key_span_alive?, true)
+    set_span_attributes(component_state)
   end
 
-  @spec end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def end_span(_name, _measurements, _metadata, _config) do
+  @spec end_span_if_element(:telemetry.event_name(), map(), map(), any()) :: :ok
+  def end_span_if_element(_name, _measurements, metadata, _config) do
+    if metadata.component_state.module.componenty_type() == :element do
+      do_end_span()
+    end
+  end
+
+  @spec end_span_if_parent(:telemetry.event_name(), map(), map(), any()) :: :ok
+  def end_span_if_parent(_name, _measurements, metadata, _config) do
+    if metadata.component_state.module.componenty_type() in [:bin, :pipeline] do
+      do_end_span()
+    end
+  end
+
+  defp do_end_span() do
     Membrane.OpenTelemetry.end_span(@span_id)
     Process.put(@pdict_key_span_alive?, false)
     :ok
@@ -102,5 +118,9 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       ETSWrapper.delete_span_and_pipeline(offspring, span_ctx, pipeline)
       ETSWrapper.delete_pipeline_offspring(pipeline, offspring)
     end)
+  end
+
+  defp set_span_attributes(component_state) do
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, component_state.name)
   end
 end

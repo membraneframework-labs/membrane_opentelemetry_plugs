@@ -61,9 +61,17 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
 
     :ok =
       :telemetry.attach(
-        {__MODULE__, :end_span},
+        {__MODULE__, :end_element_span},
         [:membrane, :handle_start_of_stream, :stop],
-        &HandlerFunctions.end_span/4,
+        &HandlerFunctions.end_span_if_element/4,
+        nil
+      )
+
+    :ok =
+      :telemetry.attach(
+        {__MODULE__, :end_parent_span},
+        [:membrane, :handle_playing, :stop],
+        &HandlerFunctions.end_span_if_parent/4,
         nil
       )
   end
@@ -78,7 +86,8 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
     end)
     |> Enum.concat([
       {__MODULE__, :start_span},
-      {__MODULE__, :end_span}
+      {__MODULE__, :end_element_span},
+      {__MODULE__, :end_parent_span}
     ])
     |> Enum.each(fn handler_id ->
       :ok = :telemetry.detach(handler_id)
