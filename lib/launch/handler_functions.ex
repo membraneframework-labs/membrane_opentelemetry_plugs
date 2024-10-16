@@ -55,17 +55,22 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     set_span_attributes(component_state)
   end
 
-  @spec end_span_if_element(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def end_span_if_element(_name, _measurements, metadata, _config) do
-    if metadata.component_state.module.membrane_component_type() == :element do
-      do_end_span()
-    end
-  end
+  @spec maybe_end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
+  def maybe_end_span([:membrane, callback, :stop], _mesaurements, metadata, _config) do
+    component_module = metadata.component_state.module
 
-  @spec end_span_if_parent(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def end_span_if_parent(_name, _measurements, metadata, _config) do
-    if metadata.component_state.module.membrane_component_type() in [:bin, :pipeline] do
-      do_end_span()
+    type =
+      case component_module.membrane_component_type() do
+        :element -> component_module.membrane_element_type()
+        :bin -> :bin
+        :pipeline -> :pipeline
+      end
+
+    case callback do
+      :handle_playing when type in [:source, :bin, :pipeline] -> do_end_span()
+      :handle_playing -> :ok
+      :handle_start_of_stream when type in [:filter, :endpoint, :sink] -> do_end_span()
+      :handle_start_of_stream -> :ok
     end
   end
 
@@ -134,20 +139,5 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
     module = component_state.module |> inspect()
     Membrane.OpenTelemetry.set_attribute(@span_id, :component_module, module)
-
-    # name =
-    #   case component_state do
-    #     %{name: name} -> name |> inspect()
-    #     %{} -> "Pipeline #{self() |> inspect()}"
-    #   end
-
-    # type = component_state.module.membrane_component_type() |> inspect()
-    # module = component_state.module |> inspect()
-
-    # Membrane.OpenTelemetry.set_attributes(@span_id,
-    #   component_state: name,
-    #   component_type: type,
-    #   component_module: module
-    # )
   end
 end

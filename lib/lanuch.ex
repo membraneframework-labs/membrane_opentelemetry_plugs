@@ -61,17 +61,17 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
 
     :ok =
       :telemetry.attach(
-        {__MODULE__, :end_element_span},
+        {__MODULE__, :maybe_end_span_on_start_of_stream},
         [:membrane, :handle_start_of_stream, :stop],
-        &HandlerFunctions.end_span_if_element/4,
+        &HandlerFunctions.maybe_end_span/4,
         nil
       )
 
     :ok =
       :telemetry.attach(
-        {__MODULE__, :end_parent_span},
+        {__MODULE__, :maybe_end_span_on_playing},
         [:membrane, :handle_playing, :stop],
-        &HandlerFunctions.end_span_if_parent/4,
+        &HandlerFunctions.maybe_end_span/4,
         nil
       )
   end
