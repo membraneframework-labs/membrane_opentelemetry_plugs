@@ -57,14 +57,14 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   @spec end_span_if_element(:telemetry.event_name(), map(), map(), any()) :: :ok
   def end_span_if_element(_name, _measurements, metadata, _config) do
-    if metadata.component_state.module.component_type() == :element do
+    if metadata.component_state.module.membrane_component_type() == :element do
       do_end_span()
     end
   end
 
   @spec end_span_if_parent(:telemetry.event_name(), map(), map(), any()) :: :ok
   def end_span_if_parent(_name, _measurements, metadata, _config) do
-    if metadata.component_state.module.component_type() in [:bin, :pipeline] do
+    if metadata.component_state.module.membrane_component_type() in [:bin, :pipeline] do
       do_end_span()
     end
   end
@@ -121,6 +121,12 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   defp set_span_attributes(component_state) do
-    Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, component_state.name)
+    name =
+      case component_state do
+        %{name: name} -> name
+        %{} -> "Pipeline #{self() |> inspect()}"
+      end
+
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, name)
   end
 end
