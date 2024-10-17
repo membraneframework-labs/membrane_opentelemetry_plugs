@@ -67,16 +67,33 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       end
 
     case callback do
-      :handle_playing when type in [:source, :bin, :pipeline] -> do_end_span()
-      :handle_playing -> :ok
-      :handle_start_of_stream when type in [:filter, :endpoint, :sink] -> do_end_span()
-      :handle_start_of_stream -> :ok
+      :handle_playing when type in [:source, :bin, :pipeline] ->
+        do_end_span(metadata.component_state)
+
+      :handle_playing ->
+        :ok
+
+      :handle_start_of_stream when type in [:filter, :endpoint, :sink] ->
+        do_end_span(metadata.component_state)
+
+      :handle_start_of_stream ->
+        :ok
     end
   end
 
-  defp do_end_span() do
-    Membrane.OpenTelemetry.end_span(@span_id)
-    Process.put(@pdict_key_span_alive?, false)
+  defp do_end_span(state) do
+    type = state.module.membrane_component_type() |> inspect()
+    module = state.module |> inspect()
+
+    "END SPAN #{type} #{module}"
+    |> then(&IO.ANSI.format([:green, &1]))
+    |> IO.puts()
+
+    if Process.get(@pdict_key_span_alive?, false) do
+      Membrane.OpenTelemetry.end_span(@span_id)
+      Process.put(@pdict_key_span_alive?, false)
+    end
+
     :ok
   end
 
@@ -125,19 +142,23 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     end)
   end
 
-  defp set_span_attributes(_component_state) do
-    # name =
-    #   case component_state do
-    #     %{name: name} -> name |> inspect()
-    #     %{} -> "Pipeline #{self() |> inspect()}"
-    #   end
+  defp set_span_attributes(component_state) do
+    name =
+      case component_state do
+        %{name: name} -> name |> inspect()
+        %{} -> "Pipeline #{self() |> inspect()}"
+      end
 
-    # Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, name)
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, name)
 
-    # type = component_state.module.membrane_component_type() |> inspect()
-    # Membrane.OpenTelemetry.set_attribute(@span_id, :component_type, type)
+    type = component_state.module.membrane_component_type() |> inspect()
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_type, type)
 
-    # module = component_state.module |> inspect()
-    # Membrane.OpenTelemetry.set_attribute(@span_id, :component_module, module)
+    module = component_state.module |> inspect()
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_module, module)
+
+    "SET SPAN ATTRIBUTES #{type} #{module} #{name}"
+    |> then(&IO.ANSI.format([:green, &1]))
+    |> IO.puts()
   end
 end
