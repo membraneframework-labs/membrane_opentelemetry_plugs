@@ -1,6 +1,7 @@
 defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   @moduledoc false
   require Membrane.OpenTelemetry
+  require Membrane.Logger
 
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
@@ -86,8 +87,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     module = state.module |> inspect()
 
     "END SPAN #{type} #{module}"
-    |> then(&IO.ANSI.format([:green, &1]))
-    |> IO.puts()
+    |> Membrane.Logger.warning()
 
     if Process.get(@pdict_key_span_alive?, false) do
       Membrane.OpenTelemetry.end_span(@span_id)
@@ -158,7 +158,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     Membrane.OpenTelemetry.set_attribute(@span_id, :component_module, module)
 
     "SET SPAN ATTRIBUTES #{type} #{module} #{name}"
-    |> then(&IO.ANSI.format([:green, &1]))
-    |> IO.puts()
+    |> Membrane.Logger.warning()
   end
 end
