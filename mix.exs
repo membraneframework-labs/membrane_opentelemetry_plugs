@@ -6,7 +6,7 @@ defmodule Membrane.Template.Mixfile do
 
   def project do
     [
-      app: :membrane_template_plugin,
+      app: :membrane_opentelemetry_plugs,
       version: @version,
       elixir: "~> 1.13",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -28,6 +28,7 @@ defmodule Membrane.Template.Mixfile do
 
   def application do
     [
+      mod: {Membrane.OpenTelemetry.Plugs.Application, []},
       extra_applications: []
     ]
   end
@@ -37,7 +38,9 @@ defmodule Membrane.Template.Mixfile do
 
   defp deps do
     [
-      {:membrane_core, "~> 1.0"},
+      {:membrane_core,
+       github: "membraneframework/membrane_core", branch: "additional-telemetry-events"},
+      {:membrane_opentelemetry, "~> 0.1.0"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:dialyxir, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, ">= 0.0.0", only: :dev, runtime: false}
