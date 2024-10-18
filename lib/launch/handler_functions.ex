@@ -5,7 +5,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
-  @span_id "component_launch"
+  @span_id "membrane_component_launch"
   @pdict_key_span_alive? :__membrane_opentelemetry_lanuch_span_alive?
 
   @spec start_span(:telemetry.event_name(), map(), map(), any()) :: :ok
@@ -69,26 +69,35 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
     case callback do
       :handle_playing when type in [:source, :bin, :pipeline] ->
-        do_end_span(metadata.component_state)
+        type = metadata.component_state.module.membrane_component_type() |> inspect()
+        module = metadata.component_state.module |> inspect()
 
-      :handle_playing ->
+        "END SPAN #{type} #{module}"
+        |> Membrane.Logger.warning()
+
+        do_end_span()
+
+      :handle_playing when type in [:filter, :endpoint, :sink] ->
         :ok
 
       :handle_start_of_stream when type in [:filter, :endpoint, :sink] ->
-        do_end_span(metadata.component_state)
+        type = metadata.component_state.module.membrane_component_type() |> inspect()
+        module = metadata.component_state.module |> inspect()
 
-      :handle_start_of_stream ->
+        "END SPAN #{type} #{module}"
+        |> Membrane.Logger.warning()
+
+        do_end_span()
+
+      :handle_start_of_stream when type in [:source, :bin, :pipeline] ->
         :ok
     end
   end
 
-  defp do_end_span(state) do
-    type = state.module.membrane_component_type() |> inspect()
-    module = state.module |> inspect()
+  @spec ensure_span_ended() :: :ok
+  def ensure_span_ended(), do: do_end_span()
 
-    "END SPAN #{type} #{module}"
-    |> Membrane.Logger.warning()
-
+  defp do_end_span() do
     if Process.get(@pdict_key_span_alive?, false) do
       Membrane.OpenTelemetry.end_span(@span_id)
       Process.put(@pdict_key_span_alive?, false)
@@ -143,16 +152,16 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   defp set_span_attributes(component_state) do
+    type = component_state.module.membrane_component_type() |> inspect()
+    Membrane.OpenTelemetry.set_attribute(@span_id, :component_type, type)
+
     name =
       case component_state do
-        %{name: name} -> name |> inspect()
-        %{} -> "Pipeline #{self() |> inspect()}"
+        %{name: name} when name != nil -> inspect(name)
+        %{} -> "#{String.capitalize(type)} #{self() |> inspect()}"
       end
 
     Membrane.OpenTelemetry.set_attribute(@span_id, :component_name, name)
-
-    type = component_state.module.membrane_component_type() |> inspect()
-    Membrane.OpenTelemetry.set_attribute(@span_id, :component_type, type)
 
     module = component_state.module |> inspect()
     Membrane.OpenTelemetry.set_attribute(@span_id, :component_module, module)
