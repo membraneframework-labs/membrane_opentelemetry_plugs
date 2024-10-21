@@ -63,7 +63,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
       :telemetry.attach(
         {__MODULE__, :maybe_end_span_on_start_of_stream},
         [:membrane, :handle_start_of_stream, :stop],
-        &HandlerFunctions.maybe_end_span/4,
+        &HandlerFunctions.ensure_span_ended/4,
         nil
       )
 

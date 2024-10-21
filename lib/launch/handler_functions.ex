@@ -5,8 +5,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
-  # @span_id "membrane_component_launch"
-  # @pdict_key_span_alive? :__membrane_opentelemetry_lanuch_span_alive?
   @pdict_span_id_key :__membrane_opentelemetry_launch_span_name__
 
   @spec start_span(:telemetry.event_name(), map(), map(), any()) :: :ok
@@ -20,8 +18,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_start_span(component_type, component_state)
 
   defp do_start_span(:pipeline, component_state) do
-    # Membrane.OpenTelemetry.start_span(@span_id)
-    # Process.put(@pdict_key_span_alive?, true)
     span_id = get_span_id(component_state)
     Process.put(@pdict_span_id_key, span_id)
 
@@ -46,7 +42,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     Process.put(@pdict_span_id_key, span_id)
 
     Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
-    # Process.put(@pdict_key_span_alive?, true)
 
     Membrane.OpenTelemetry.get_span(span_id)
     |> ETSWrapper.store_span_and_pipeline(pipeline)
@@ -63,50 +58,50 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     Process.put(@pdict_span_id_key, span_id)
 
     Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
-    # Process.put(@pdict_key_span_alive?, true)
     set_span_attributes(component_state)
   end
 
-  @spec maybe_end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def maybe_end_span([:membrane, callback, :stop], _mesaurements, metadata, _config) do
-    type = get_type(metadata.component_state)
-
-    case callback do
-      :handle_playing when type in [:source, :bin, :pipeline] ->
-        do_end_span()
-
-      :handle_playing when type in [:filter, :endpoint, :sink] ->
-        :ok
-
-      :handle_start_of_stream when type in [:filter, :endpoint, :sink] ->
-        do_end_span()
-
-      :handle_start_of_stream when type in [:source, :bin, :pipeline] ->
-        :ok
-    end
+  @spec ensure_span_ended(:telemetry.event_name(), map(), map(), any()) :: :ok
+  def ensure_span_ended(
+        [:membrane, :handle_start_of_stream, :stop],
+        _mesaurements,
+        _metadata,
+        _config
+      ) do
+    do_ensure_span_ended()
+    :ok
   end
 
-  @spec ensure_span_ended() :: :ok
-  def ensure_span_ended(), do: do_end_span()
+  @spec maybe_end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
+  def maybe_end_span([:membrane, :handle_playing, :stop], _mesaurements, metadata, _config) do
+    component_state = metadata.component_state
 
-  defp do_end_span() do
-    with span_id when span_id != nil <- Process.delete(@pdict_span_id_key) do
-      Membrane.OpenTelemetry.end_span(span_id)
+    if get_type(component_state) in [:source, :bin, :pipeline] or
+         not has_input_pads(component_state) do
+      do_ensure_span_ended()
     end
 
     :ok
   end
 
-  @spec callback_start(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def callback_start([:membrane, _callback, :start] = name, _measurements, _metadata, _config) do
-    # if Process.get(@pdict_key_span_alive?, false) do
-    #   event_name = name |> Enum.map_join("_", &Atom.to_string/1)
-    #   Membrane.OpenTelemetry.add_event(@span_id, event_name)
-    # end
+  defp has_input_pads(component_state) do
+    component_state
+    |> Map.get(:pads, [])
+    |> Enum.any?(fn {_pad, %{direction: direction}} -> direction == :input end)
+  end
 
+  def do_ensure_span_ended() do
+    with span_id when span_id != nil <- Process.delete(@pdict_span_id_key) do
+      Membrane.OpenTelemetry.end_span(span_id)
+    end
+  end
+
+  @spec callback_start(:telemetry.event_name(), map(), map(), any()) :: :ok
+  def callback_start([:membrane, callback, :start] = name, _measurements, metadata, _config) do
     with span_id when span_id != nil <- Process.get(@pdict_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
-      Membrane.OpenTelemetry.add_event(span_id, event_name)
+      event_attributes = get_callback_attributes(callback, metadata.callback_args)
+      Membrane.OpenTelemetry.add_event(span_id, event_name, event_attributes)
     end
 
     :ok
@@ -119,11 +114,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
         _metadata,
         _config
       ) do
-    # if Process.get(@pdict_key_span_alive?, false) do
-    #   event_name = name |> Enum.map_join("_", &Atom.to_string/1)
-    #   Membrane.OpenTelemetry.add_event(@span_id, event_name, duration: duration)
-    # end
-
     with span_id when span_id != nil <- Process.get(@pdict_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
       Membrane.OpenTelemetry.add_event(span_id, event_name, duration: duration)
@@ -157,12 +147,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       type = component_state.module.membrane_component_type() |> inspect()
       Membrane.OpenTelemetry.set_attribute(span_id, :component_type, type)
 
-      name =
-        case component_state do
-          %{name: name} when name != nil -> inspect(name)
-          %{} -> "#{String.capitalize(type)} #{self() |> inspect()}"
-        end
-
+      name = get_pretty_name(component_state)
       Membrane.OpenTelemetry.set_attribute(span_id, :component_name, name)
 
       module = component_state.module |> inspect()
@@ -172,8 +157,31 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     :ok
   end
 
+  defp get_callback_attributes(callback, callback_args) do
+    case callback do
+      :handle_parent_notification -> [:notification]
+      :handle_child_notification -> [:notification, :child]
+      :handle_event -> [:pad, :event]
+      :handle_stream_format -> [:pad, :stream_format]
+      :handle_info -> [:message]
+      _rest -> []
+    end
+    |> Enum.zip(callback_args)
+    |> Enum.map(fn {key, value} -> {key, inspect(value)} end)
+  end
+
   defp get_span_id(component_state) do
-    "membrane_#{get_type(component_state)}_launch_#{inspect(component_state.module)}"
+    "membrane_#{get_type(component_state)}_launch_#{get_pretty_name(component_state)}"
+  end
+
+  defp get_pretty_name(component_state) do
+    type = get_type(component_state)
+
+    case component_state do
+      %{name: name} when is_binary(name) -> name
+      %{name: name} when name != nil -> inspect(name)
+      %{} -> "#{Atom.to_string(type) |> String.capitalize()} #{self() |> inspect()}"
+    end
   end
 
   defp get_type(component_state) do
