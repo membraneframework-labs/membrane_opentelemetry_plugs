@@ -32,8 +32,10 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
 
   @spec get_span_and_pipeline(pid()) :: {:ok, OpenTelemetry.span_ctx(), pid()}
   def get_span_and_pipeline(pid) do
-    [{^pid, {span_ctx, pipeline}}] = :ets.lookup(@pid_to_span_and_pipeline_ets, pid)
-    {:ok, span_ctx, pipeline}
+    case :ets.lookup(@pid_to_span_and_pipeline_ets, pid) do
+      [{^pid, {span_ctx, pipeline}}] -> {:ok, span_ctx, pipeline}
+      [] -> :error
+    end
   end
 
   @spec store_span_and_pipeline(OpenTelemetry.span_ctx(), pid()) :: :ok

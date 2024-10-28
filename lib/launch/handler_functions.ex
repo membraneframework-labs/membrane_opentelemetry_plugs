@@ -5,7 +5,15 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
+  @tracked_pipelines Application.compile_env(
+                       :membrane_opentelemetry_plugs,
+                       :tracked_pipelines,
+                       :all
+                     )
   @pdict_span_id_key :__membrane_opentelemetry_launch_span_name__
+
+  @spec tracked_pipelines() :: atom() | [module()]
+  def tracked_pipelines(), do: @tracked_pipelines
 
   @spec start_span(:telemetry.event_name(), map(), map(), any()) :: :ok
   def start_span(_name, _measurements, metadata, _config) do
@@ -18,47 +26,52 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_start_span(component_type, component_state)
 
   defp do_start_span(:pipeline, component_state) do
-    span_id = get_span_id(:pipeline, component_state)
-    Process.put(@pdict_span_id_key, span_id)
+    # trick to mute dialyzer
+    tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
 
-    Membrane.OpenTelemetry.start_span(span_id)
+    if tracked_pipelines == :all or component_state.module in tracked_pipelines do
+      span_id = get_span_id(:pipeline, component_state)
+      Process.put(@pdict_span_id_key, span_id)
 
-    pipeline = self()
+      Membrane.OpenTelemetry.start_span(span_id)
 
-    Membrane.OpenTelemetry.get_span(span_id)
-    |> ETSWrapper.store_span_and_pipeline(pipeline)
+      pipeline = self()
 
-    ETSWrapper.store_pipeline_offspring(pipeline)
-    set_span_attributes(component_state)
+      Membrane.OpenTelemetry.get_span(span_id)
+      |> ETSWrapper.store_span_and_pipeline(pipeline)
 
-    Task.start(__MODULE__, :pipeline_monitor, [pipeline])
+      ETSWrapper.store_pipeline_offspring(pipeline)
+      set_span_attributes(component_state)
+
+      Task.start(__MODULE__, :pipeline_monitor, [pipeline])
+    end
   end
 
   defp do_start_span(:bin, component_state) do
-    {:ok, parent_span_ctx, pipeline} =
-      ETSWrapper.get_span_and_pipeline(component_state.parent_pid)
+    with {:ok, parent_span_ctx, pipeline} <-
+           ETSWrapper.get_span_and_pipeline(component_state.parent_pid) do
+      span_id = get_span_id(:bin, component_state)
+      Process.put(@pdict_span_id_key, span_id)
 
-    span_id = get_span_id(:bin, component_state)
-    Process.put(@pdict_span_id_key, span_id)
+      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
 
-    Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
+      Membrane.OpenTelemetry.get_span(span_id)
+      |> ETSWrapper.store_span_and_pipeline(pipeline)
 
-    Membrane.OpenTelemetry.get_span(span_id)
-    |> ETSWrapper.store_span_and_pipeline(pipeline)
-
-    ETSWrapper.store_pipeline_offspring(pipeline)
-    set_span_attributes(component_state)
+      ETSWrapper.store_pipeline_offspring(pipeline)
+      set_span_attributes(component_state)
+    end
   end
 
   defp do_start_span(:element, component_state) do
-    {:ok, parent_span_ctx, _pipeline} =
-      ETSWrapper.get_span_and_pipeline(component_state.parent_pid)
+    with {:ok, parent_span_ctx, _pipeline} <-
+           ETSWrapper.get_span_and_pipeline(component_state.parent_pid) do
+      span_id = get_span_id(:element, component_state)
+      Process.put(@pdict_span_id_key, span_id)
 
-    span_id = get_span_id(:element, component_state)
-    Process.put(@pdict_span_id_key, span_id)
-
-    Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
-    set_span_attributes(component_state)
+      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
+      set_span_attributes(component_state)
+    end
   end
 
   @spec ensure_span_ended(:telemetry.event_name(), map(), map(), any()) :: :ok
