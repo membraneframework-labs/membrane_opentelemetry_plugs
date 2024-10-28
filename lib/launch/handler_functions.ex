@@ -18,7 +18,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_start_span(component_type, component_state)
 
   defp do_start_span(:pipeline, component_state) do
-    span_id = get_span_id(component_state)
+    span_id = get_span_id(:pipeline, component_state)
     Process.put(@pdict_span_id_key, span_id)
 
     Membrane.OpenTelemetry.start_span(span_id)
@@ -38,7 +38,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     {:ok, parent_span_ctx, pipeline} =
       ETSWrapper.get_span_and_pipeline(component_state.parent_pid)
 
-    span_id = get_span_id(component_state)
+    span_id = get_span_id(:bin, component_state)
     Process.put(@pdict_span_id_key, span_id)
 
     Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
@@ -54,7 +54,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     {:ok, parent_span_ctx, _pipeline} =
       ETSWrapper.get_span_and_pipeline(component_state.parent_pid)
 
-    span_id = get_span_id(component_state)
+    span_id = get_span_id(:element, component_state)
     Process.put(@pdict_span_id_key, span_id)
 
     Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
@@ -170,7 +170,11 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     |> Enum.map(fn {key, value} -> {key, inspect(value)} end)
   end
 
-  defp get_span_id(component_state) do
+  defp get_span_id(:pipeline, component_state) do
+    "membrane_pipeline_launch_#{inspect(component_state.module)}"
+  end
+
+  defp get_span_id(_bin_or_element, component_state) do
     "membrane_#{get_type(component_state)}_launch_#{get_pretty_name(component_state)}"
   end
 
