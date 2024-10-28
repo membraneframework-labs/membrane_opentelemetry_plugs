@@ -85,7 +85,8 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   defp has_input_pads(component_state) do
-    component_state.pads_data
+    component_state
+    |> Map.get(:pads, [])
     |> Enum.any?(fn {_pad, %{direction: direction}} -> direction == :input end)
   end
 
