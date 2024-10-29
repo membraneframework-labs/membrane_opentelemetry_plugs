@@ -90,17 +90,11 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     component_state = metadata.component_state
 
     if get_type(component_state) in [:source, :bin, :pipeline] or
-         not has_input_pads(component_state) do
+         Enum.all?(component_state.pads_data, fn {_pad, data} -> data.direction == :output end) do
       do_ensure_span_ended()
     end
 
     :ok
-  end
-
-  defp has_input_pads(component_state) do
-    component_state
-    |> Map.get(:pads_data)
-    |> Enum.any?(fn {_pad, %{direction: direction}} -> direction == :input end)
   end
 
   def do_ensure_span_ended() do
