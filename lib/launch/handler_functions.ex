@@ -40,7 +40,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       Membrane.OpenTelemetry.get_span(span_id)
       |> ETSWrapper.store_span_and_pipeline(pipeline)
 
-      ETSWrapper.store_pipeline_offspring(pipeline)
+      ETSWrapper.store_as_parent_within_pipeline(pipeline)
       set_span_attributes(component_state)
 
       Task.start(__MODULE__, :pipeline_monitor, [pipeline])
@@ -58,7 +58,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       Membrane.OpenTelemetry.get_span(span_id)
       |> ETSWrapper.store_span_and_pipeline(pipeline)
 
-      ETSWrapper.store_pipeline_offspring(pipeline)
+      ETSWrapper.store_as_parent_within_pipeline(pipeline)
       set_span_attributes(component_state)
     end
   end
@@ -97,7 +97,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     :ok
   end
 
-  def do_ensure_span_ended() do
+  defp do_ensure_span_ended() do
     with span_id when span_id != nil <- Process.delete(@pdict_span_id_key) do
       Membrane.OpenTelemetry.end_span(span_id)
     end
@@ -141,11 +141,11 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   defp cleanup_pipeline(pipeline) do
-    ETSWrapper.get_pipeline_offsprings(pipeline)
-    |> Enum.each(fn offspring ->
-      {:ok, span_ctx, ^pipeline} = ETSWrapper.get_span_and_pipeline(offspring)
-      ETSWrapper.delete_span_and_pipeline(offspring, span_ctx, pipeline)
-      ETSWrapper.delete_pipeline_offspring(pipeline, offspring)
+    ETSWrapper.get_parents_within_pipeline(pipeline)
+    |> Enum.each(fn parent ->
+      {:ok, span_ctx, ^pipeline} = ETSWrapper.get_span_and_pipeline(parent)
+      ETSWrapper.delete_span_and_pipeline(parent, span_ctx, pipeline)
+      ETSWrapper.delete_parent_within_pipeline(pipeline, parent)
     end)
   end
 

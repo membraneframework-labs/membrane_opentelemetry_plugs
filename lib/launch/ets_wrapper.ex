@@ -1,6 +1,6 @@
 defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
   @pid_to_span_and_pipeline_ets :__membrane_opentelemetry_plugs_launch_pid_to_span_and_pipeline__
-  @pipeline_offsprings_ets :__membrane_opentelemetry_plugs_launch_pipeline_offsprings__
+  @pipeline_pid_to_parents_ets :__membrane_opentelemetry_plugs_launch_pipeline_pid_to_parents__
 
   @spec setup_ets_tables() :: :ok
   def setup_ets_tables() do
@@ -12,7 +12,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
       {:read_concurrency, true}
     ])
 
-    :ets.new(@pipeline_offsprings_ets, [
+    :ets.new(@pipeline_pid_to_parents_ets, [
       :public,
       # allows duplicates
       :bag,
@@ -26,11 +26,11 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
   @spec delete_ets_tables() :: :ok
   def delete_ets_tables() do
     :ets.delete(@pid_to_span_and_pipeline_ets)
-    :ets.delete(@pipeline_offsprings_ets)
+    :ets.delete(@pipeline_pid_to_parents_ets)
     :ok
   end
 
-  @spec get_span_and_pipeline(pid()) :: {:ok, OpenTelemetry.span_ctx(), pid()}
+  @spec get_span_and_pipeline(pid()) :: {:ok, OpenTelemetry.span_ctx(), pid()} | :error
   def get_span_and_pipeline(pid) do
     case :ets.lookup(@pid_to_span_and_pipeline_ets, pid) do
       [{^pid, {span_ctx, pipeline}}] -> {:ok, span_ctx, pipeline}
@@ -48,17 +48,17 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
     :ets.delete(@pid_to_span_and_pipeline_ets, {component_pid, {span_ctx, pipeline}})
   end
 
-  def store_pipeline_offspring(pipeline) do
-    :ets.insert(@pipeline_offsprings_ets, {pipeline, self()})
+  def store_as_parent_within_pipeline(pipeline) do
+    :ets.insert(@pipeline_pid_to_parents_ets, {pipeline, self()})
     :ok
   end
 
-  def get_pipeline_offsprings(pipeline) do
-    :ets.lookup(@pipeline_offsprings_ets, pipeline)
+  def get_parents_within_pipeline(pipeline) do
+    :ets.lookup(@pipeline_pid_to_parents_ets, pipeline)
     |> Enum.map(fn {^pipeline, component} -> component end)
   end
 
-  def delete_pipeline_offspring(pipeline, offspring) do
-    :ets.delete(@pipeline_offsprings_ets, {pipeline, offspring})
+  def delete_parent_within_pipeline(pipeline, parent) do
+    :ets.delete(@pipeline_pid_to_parents_ets, {pipeline, parent})
   end
 end
