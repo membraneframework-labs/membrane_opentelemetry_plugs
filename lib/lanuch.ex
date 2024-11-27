@@ -1,6 +1,7 @@
 defmodule Membrane.OpenTelemetry.Plugs.Launch do
   @moduledoc """
-  Attaches OpenTelemetry spans describing events during components launch, since `handle_init` until `handle_end_of_stream`
+  Attaches OpenTelemetry spans describing events during launch of the component.
+  Each span starts when the `handle_init` callback is invoked and lasts until the `handle_start_of_stream` invocation ends.
   """
 
   alias __MODULE__.{HandlerFunctions, ETSWrapper}
