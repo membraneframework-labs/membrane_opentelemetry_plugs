@@ -1,30 +1,36 @@
-# Membrane Template Plugin
+# Membrane Opentelemetry Plugs
 
-[![Hex.pm](https://img.shields.io/hexpm/v/membrane_template_plugin.svg)](https://hex.pm/packages/membrane_template_plugin)
-[![API Docs](https://img.shields.io/badge/api-docs-yellow.svg?style=flat)](https://hexdocs.pm/membrane_template_plugin)
-[![CircleCI](https://circleci.com/gh/membraneframework/membrane_template_plugin.svg?style=svg)](https://circleci.com/gh/membraneframework/membrane_template_plugin)
+[![Hex.pm](https://img.shields.io/hexpm/v/membrane_opentelemetry_plugs.svg)](https://hex.pm/packages/membrane_opentelemetry_plugs)
+[![API Docs](https://img.shields.io/badge/api-docs-yellow.svg?style=flat)](https://hexdocs.pm/membrane_opentelemetry_plugs)
+[![CircleCI](https://circleci.com/gh/membraneframework/membrane_opentelemetry_plugs.svg?style=svg)](https://circleci.com/gh/membraneframework/membrane_opentelemetry_plugs)
 
-This repository contains a template for new plugins.
-
-Check out different branches for other flavors of this template.
+This repository contains plugs that generate opentelemetry spans.
 
 It's a part of the [Membrane Framework](https://membrane.stream).
 
 ## Installation
 
-The package can be installed by adding `membrane_template_plugin` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `membrane_opentelemetry_plugs` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:membrane_template_plugin, "~> 0.1.0"}
+    {:membrane_opentelemetry_plugs, "~> 0.1.0"}
   ]
 end
 ```
 
 ## Usage
 
-TODO
+To enable a plug, you have to include it in the project config. You can also specify, which Membrane pipelines you want to track (defaults to `:all`).
+
+```elixir
+config :membrane_opentelemetry_plugs,
+  plugs: [Membrane.OpenTelemetry.Plugs.Launch],
+  tracked_pipelines: [My.Pipeline, My.Another.Pipeline]
+```
+
+Currently the only one plug that exists in this repo is `Membrane.OpenTelemetry.Plugs.Launch`.
 
 ## Copyright and License
 
