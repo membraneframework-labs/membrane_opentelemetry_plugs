@@ -3,6 +3,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   require Membrane.OpenTelemetry
   require Membrane.Logger
 
+  alias Membrane.ComponentPath
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
   @tracked_pipelines Application.compile_env(
@@ -15,62 +16,64 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   @spec tracked_pipelines() :: atom() | [module()]
   def tracked_pipelines(), do: @tracked_pipelines
 
-  @spec start_span(:telemetry.event_name(), map(), map(), any()) :: :ok
+  @spec start_span(:telemetry.event_name(), measurements :: map(), metadata :: Membrane.Telemetry.callback_span_metadata(), config ::  any()) :: :ok
   def start_span(_name, _measurements, metadata, _config) do
-    metadata.component_state.module.membrane_component_type()
-    |> do_start_span(metadata.component_state)
-
+    do_start_span(metadata)
     :ok
   end
 
-  defp do_start_span(component_type, component_state)
+  @spec do_start_span(Membrane.Telemetry.callback_span_metadata()) :: any()
+  defp do_start_span(metadata)
 
-  defp do_start_span(:pipeline, component_state) do
+  defp do_start_span(%{component_type: :pipeline} = metadata) do
     # trick to mute dialyzer
     tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
 
-    if tracked_pipelines == :all or component_state.module in tracked_pipelines do
-      span_id = get_span_id(:pipeline, component_state)
+    if tracked_pipelines == :all or metadata.callback_context.module in tracked_pipelines do
+      span_id = get_span_id(metadata)
       Process.put(@pdict_span_id_key, span_id)
 
       Membrane.OpenTelemetry.start_span(span_id)
 
-      pipeline = self()
+      pipeline_path = ComponentPath.get()
 
-      Membrane.OpenTelemetry.get_span(span_id)
-      |> ETSWrapper.store_span_and_pipeline(pipeline)
+      span = Membrane.OpenTelemetry.get_span(span_id)
+      ETSWrapper.store_span(pipeline_path, span)
 
-      ETSWrapper.store_as_parent_within_pipeline(pipeline)
-      set_span_attributes(component_state)
+      ETSWrapper.metadata(pipeline_path, pipeline_path)
+      set_span_attributes(metadata)
 
-      Task.start(__MODULE__, :pipeline_monitor, [pipeline])
+      Task.start(__MODULE__, :pipeline_monitor, [self(), pipeline_path])
     end
   end
 
-  defp do_start_span(:bin, component_state) do
-    with {:ok, parent_span_ctx, pipeline} <-
-           ETSWrapper.get_span_and_pipeline(component_state.parent_pid) do
-      span_id = get_span_id(:bin, component_state)
+  defp do_start_span(%{component_type: :bin} = metadata) do
+    with {:ok, parent_span} <-
+      get_parent_component_path() |> ETSWrapper.get_span() do
+      span_id = get_span_id(metadata)
       Process.put(@pdict_span_id_key, span_id)
 
-      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
+      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
 
-      Membrane.OpenTelemetry.get_span(span_id)
-      |> ETSWrapper.store_span_and_pipeline(pipeline)
+      span = Membrane.OpenTelemetry.get_span(span_id)
 
-      ETSWrapper.store_as_parent_within_pipeline(pipeline)
-      set_span_attributes(component_state)
+      [pipeline_name | _tail] = my_path = ComponentPath.get()
+
+      ETSWrapper.store_span(my_path, span)
+      ETSWrapper.store_as_parent_within_pipeline(my_path, [pipeline_name])
+      set_span_attributes(metadata)
     end
   end
 
-  defp do_start_span(:element, component_state) do
-    with {:ok, parent_span_ctx, _pipeline} <-
-           ETSWrapper.get_span_and_pipeline(component_state.parent_pid) do
-      span_id = get_span_id(:element, component_state)
+  defp do_start_span(%{component_type: :element} = metadata) do
+    with {:ok, parent_span} <-
+        get_parent_component_path() |> ETSWrapper.get_span() do
+
+      span_id = get_span_id(metadata)
       Process.put(@pdict_span_id_key, span_id)
 
       Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
-      set_span_attributes(component_state)
+      set_span_attributes(metadata)
     end
   end
 
@@ -129,12 +132,13 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     :ok
   end
 
-  @spec pipeline_monitor(pid()) :: :ok
-  def pipeline_monitor(pipeline) do
-    ref = Process.monitor(pipeline)
+  @spec pipeline_monitor(pid(), ComponentPath.t()) :: :ok
+  def pipeline_monitor(pipeline_pid, pipeline_path) do
+    ref = Process.monitor(pipeline_pid)
 
     receive do
-      {:DOWN, ^ref, _process, _pid, _reason} -> cleanup_pipeline(pipeline)
+      {:DOWN, ^ref, _process, _pid, _reason} ->
+        cleanup_pipeline(pipeline_path)
     end
 
     :ok
@@ -143,21 +147,22 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp cleanup_pipeline(pipeline) do
     ETSWrapper.get_parents_within_pipeline(pipeline)
     |> Enum.each(fn parent ->
-      {:ok, span_ctx, ^pipeline} = ETSWrapper.get_span_and_pipeline(parent)
+      {:ok, span_ctx, ^pipeline} = ETSWrapper.get_span(parent)
       ETSWrapper.delete_span_and_pipeline(parent, span_ctx, pipeline)
       ETSWrapper.delete_parent_within_pipeline(pipeline, parent)
     end)
   end
 
-  defp set_span_attributes(component_state) do
+  @spec set_span_attributes(Membrane.Telemetry.callback_span_metadata()) :: :ok
+  defp set_span_attributes(metadata) do
     with span_id when span_id != nil <- Process.get(@pdict_span_id_key) do
-      type = component_state.module.membrane_component_type() |> inspect()
+      type = metadata |> get_type() |> inspect()
       Membrane.OpenTelemetry.set_attribute(span_id, :component_type, type)
 
-      name = get_pretty_name(component_state)
+      name = get_pretty_name(metadata)
       Membrane.OpenTelemetry.set_attribute(span_id, :component_name, name)
 
-      module = component_state.module |> inspect()
+      module = metadata.callback_context.module |> inspect()
       Membrane.OpenTelemetry.set_attribute(span_id, :component_module, module)
     end
 
@@ -177,29 +182,35 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     |> Enum.map(fn {key, value} -> {key, inspect(value)} end)
   end
 
-  defp get_span_id(:pipeline, component_state) do
-    "membrane_pipeline_launch_#{inspect(component_state.module)}"
+  defp get_span_id(%{component_type: :pipeline} = metadata) do
+    "membrane_pipeline_launch_#{inspect(metadata.callback_context.module)}"
   end
 
-  defp get_span_id(_bin_or_element, component_state) do
-    "membrane_#{get_type(component_state)}_launch_#{get_pretty_name(component_state)}"
+  defp get_span_id(metadata) do
+    "membrane_#{get_type(metadata)}_launch_#{get_pretty_name(metadata)}"
   end
 
-  defp get_pretty_name(component_state) do
-    type = get_type(component_state)
+  defp get_pretty_name(metadata) do
+    type = get_type(metadata)
 
-    case component_state do
+    case metadata.callback_context do
       %{name: name} when is_binary(name) -> name
       %{name: name} when name != nil -> inspect(name)
       %{} -> "#{Atom.to_string(type) |> String.capitalize()} #{self() |> inspect()}"
     end
   end
 
-  defp get_type(component_state) do
-    case component_state.module.membrane_component_type() do
-      :element -> component_state.module.membrane_element_type()
+  defp get_type(%{component_type: component_type} = metadata) do
+    case component_type do
+      :element -> metadata.callback_context.module.membrane_element_type()
       :bin -> :bin
       :pipeline -> :pipeline
     end
+  end
+
+  def get_parent_component_path() do
+    my_path = ComponentPath.get()
+    {_my_name, parent_path} = List.pop_at(my_path, length(my_path) - 1)
+    parent_path
   end
 end
