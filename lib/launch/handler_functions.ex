@@ -45,7 +45,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       span = Membrane.OpenTelemetry.get_span(span_id)
       ETSWrapper.store_span(pipeline_path, span)
 
-      ETSWrapper.metadata(pipeline_path, pipeline_path)
+      ETSWrapper.store_as_parent_within_pipeline(pipeline_path, pipeline_path)
       set_span_attributes(metadata)
 
       Task.start(__MODULE__, :pipeline_monitor, [self(), pipeline_path])

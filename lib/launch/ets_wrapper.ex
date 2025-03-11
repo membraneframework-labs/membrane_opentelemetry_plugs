@@ -54,7 +54,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
 
   @spec store_as_parent_within_pipeline(ComponentPath.t(), ComponentPath.t()) :: :ok
   def store_as_parent_within_pipeline(my_component_path, pipeline_path) do
-    :ets.insert(@pipeline_to_parents_ets, {pipeline, my_component_path})
+    :ets.insert(@pipeline_to_parents_ets, {pipeline_path, my_component_path})
     :ok
   end
 
