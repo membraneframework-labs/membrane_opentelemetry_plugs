@@ -34,47 +34,59 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
 
   defp attach_telemetry_handlers() do
     :ok =
-      :telemetry.attach(
-        {__MODULE__, :start_span},
-        [:membrane, :handle_init, :start],
-        &HandlerFunctions.start_span/4,
-        nil
+      attach(
+        :start_span,
+        :handle_init,
+        :start,
+        &HandlerFunctions.start_span/4
       )
 
     @all_callbacks
     |> Enum.each(fn callback ->
       :ok =
-        :telemetry.attach(
-          {__MODULE__, callback, :start},
-          [:membrane, callback, :start],
-          &HandlerFunctions.callback_start/4,
-          nil
+        attach(
+          {callback, :start},
+          callback,
+          :start,
+          &HandlerFunctions.callback_start/4
         )
 
       :ok =
-        :telemetry.attach(
-          {__MODULE__, callback, :stop},
-          [:membrane, callback, :stop],
-          &HandlerFunctions.callback_stop/4,
-          nil
+        attach(
+          {callback, :stop},
+          callback,
+          :stop,
+          &HandlerFunctions.callback_stop/4
         )
     end)
 
     :ok =
-      :telemetry.attach(
-        {__MODULE__, :maybe_end_span_on_start_of_stream},
-        [:membrane, :handle_start_of_stream, :stop],
-        &HandlerFunctions.ensure_span_ended/4,
-        nil
+      attach(
+        :maybe_end_span_on_start_of_stream,
+        :handle_start_of_stream,
+        :stop,
+        &HandlerFunctions.ensure_span_ended/4
       )
 
     :ok =
+      attach(
+        :maybe_end_span_on_playing,
+        :handle_playing,
+        :stop,
+        &HandlerFunctions.maybe_end_span/4
+      )
+  end
+
+  defp attach(id, callback, start_or_stop, handler) do
+    [:pipeline, :bin, :element]
+    |> Enum.each(fn component_type ->
       :telemetry.attach(
-        {__MODULE__, :maybe_end_span_on_playing},
-        [:membrane, :handle_playing, :stop],
-        &HandlerFunctions.maybe_end_span/4,
+        {__MODULE__, component_type, id},
+        [:membrane, component_type, callback, start_or_stop],
+        handler,
         nil
       )
+    end)
   end
 
   defp detach_telemetry_handlers() do
@@ -87,8 +99,8 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
     end)
     |> Enum.concat([
       {__MODULE__, :start_span},
-      {__MODULE__, :end_element_span},
-      {__MODULE__, :end_parent_span}
+      {__MODULE__, :maybe_end_span_on_start_of_stream},
+      {__MODULE__, :maybe_end_span_on_playing}
     ])
     |> Enum.each(fn handler_id ->
       :ok = :telemetry.detach(handler_id)

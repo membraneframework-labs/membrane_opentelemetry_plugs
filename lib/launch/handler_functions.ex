@@ -16,7 +16,12 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   @spec tracked_pipelines() :: atom() | [module()]
   def tracked_pipelines(), do: @tracked_pipelines
 
-  @spec start_span(:telemetry.event_name(), measurements :: map(), metadata :: Membrane.Telemetry.callback_span_metadata(), config ::  any()) :: :ok
+  @spec start_span(
+          :telemetry.event_name(),
+          measurements :: map(),
+          metadata :: Membrane.Telemetry.callback_span_metadata(),
+          config :: any()
+        ) :: :ok
   def start_span(_name, _measurements, metadata, _config) do
     do_start_span(metadata)
     :ok
@@ -49,7 +54,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_start_span(%{component_type: :bin} = metadata) do
     with {:ok, parent_span} <-
-      get_parent_component_path() |> ETSWrapper.get_span() do
+           get_parent_component_path() |> ETSWrapper.get_span() do
       span_id = get_span_id(metadata)
       Process.put(@pdict_span_id_key, span_id)
 
@@ -67,12 +72,11 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_start_span(%{component_type: :element} = metadata) do
     with {:ok, parent_span} <-
-        get_parent_component_path() |> ETSWrapper.get_span() do
-
+           get_parent_component_path() |> ETSWrapper.get_span() do
       span_id = get_span_id(metadata)
       Process.put(@pdict_span_id_key, span_id)
 
-      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span_ctx)
+      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
       set_span_attributes(metadata)
     end
   end
@@ -90,14 +94,16 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   @spec maybe_end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
   def maybe_end_span([:membrane, :handle_playing, :stop], _mesaurements, metadata, _config) do
-    component_state = metadata.component_state
-
-    if get_type(component_state) in [:source, :bin, :pipeline] or
-         Enum.all?(component_state.pads_data, fn {_pad, data} -> data.direction == :output end) do
+    if get_type(metadata) in [:source, :bin, :pipeline] or only_output_pads?(metadata) do
       do_ensure_span_ended()
     end
 
     :ok
+  end
+
+  defp only_output_pads?(metadata) do
+    metadata.callback_context.pads
+    |> Enum.all?(fn {_pad, data} -> data.direction == :output end)
   end
 
   defp do_ensure_span_ended() do
@@ -138,19 +144,21 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
     receive do
       {:DOWN, ^ref, _process, _pid, _reason} ->
-        cleanup_pipeline(pipeline_path)
+        :ok = cleanup_pipeline(pipeline_path)
     end
 
     :ok
   end
 
-  defp cleanup_pipeline(pipeline) do
-    ETSWrapper.get_parents_within_pipeline(pipeline)
-    |> Enum.each(fn parent ->
-      {:ok, span_ctx, ^pipeline} = ETSWrapper.get_span(parent)
-      ETSWrapper.delete_span_and_pipeline(parent, span_ctx, pipeline)
-      ETSWrapper.delete_parent_within_pipeline(pipeline, parent)
+  defp cleanup_pipeline(pipeline_path) do
+    ETSWrapper.get_parents_within_pipeline(pipeline_path)
+    |> Enum.each(fn parent_path ->
+      {:ok, span} = ETSWrapper.get_span(parent_path)
+      ETSWrapper.delete_span_and_pipeline(parent_path, span)
+      ETSWrapper.delete_parent_within_pipeline(pipeline_path, parent_path)
     end)
+
+    :ok
   end
 
   @spec set_span_attributes(Membrane.Telemetry.callback_span_metadata()) :: :ok
