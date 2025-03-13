@@ -3,6 +3,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   require Membrane.OpenTelemetry
   require Membrane.Logger
 
+  alias ElixirSense.Log
   alias Membrane.ComponentPath
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
@@ -39,6 +40,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       Process.put(@pdict_launch_span_id_key, span_id)
 
       Membrane.OpenTelemetry.start_span(span_id)
+      start_span_log(span_id)
 
       pipeline_path = ComponentPath.get()
 
@@ -61,6 +63,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       Process.put(@pdict_launch_span_id_key, span_id)
 
       Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+      start_span_log(span_id)
 
       span = Membrane.OpenTelemetry.get_span(span_id)
 
@@ -81,6 +84,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       Process.put(@pdict_launch_span_id_key, span_id)
 
       Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+      start_span_log(span_id)
       set_launch_span_attributes(metadata)
 
       start_init_to_playing_span(metadata)
@@ -117,6 +121,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_ensure_launch_span_ended() do
     with span_id when span_id != nil <- Process.delete(@pdict_launch_span_id_key) do
       Membrane.OpenTelemetry.end_span(span_id)
+      end_span_log(span_id)
     end
   end
 
@@ -204,7 +209,10 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       |> Membrane.OpenTelemetry.get_span()
 
     get_init_to_playing_span_id(metadata)
-    |> Membrane.OpenTelemetry.start_span(launch_span)
+    |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)
+
+    get_init_to_playing_span_id(metadata)
+    |> start_span_log()
 
     :ok
   end
@@ -212,6 +220,9 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp end_init_to_playing_span(metadata) do
     get_init_to_playing_span_id(metadata)
     |> Membrane.OpenTelemetry.end_span()
+
+    get_init_to_playing_span_id(metadata)
+    |> end_span_log()
   end
 
   defp get_launch_span_id(metadata), do: get_span_id("launch", metadata)
@@ -250,5 +261,22 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     my_path = ComponentPath.get()
     {_my_name, parent_path} = List.pop_at(my_path, length(my_path) - 1)
     parent_path
+  end
+
+  defp start_span_log(span_id) do
+    span_log(span_id, "STARTING SPAN")
+  end
+
+  defp end_span_log(span_id) do
+    span_log(span_id, "ENDING SPAN")
+  end
+
+  defp span_log(span_id, log) do
+    require Logger
+    Logger.warning("""
+    #{log}
+    SPAN_ID: #{span_id}
+    COMPONENT_PATH: #{ComponentPath.get() |> inspect()}
+    """)
   end
 end
