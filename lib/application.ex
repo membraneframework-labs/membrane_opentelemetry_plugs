@@ -19,10 +19,10 @@ defmodule Membrane.OpenTelemetry.Plugs.Application do
 
   @impl true
   def start(_type, _args) do
-    # @enabled_plugs
-    # |> Enum.each(fn plug_module ->
-    #   :ok = plug_module.plug()
-    # end)
+    @enabled_plugs
+    |> Enum.each(fn plug_module ->
+      :ok = plug_module.plug()
+    end)
 
     children = []
     opts = [strategy: :one_for_one, name: __MODULE__]

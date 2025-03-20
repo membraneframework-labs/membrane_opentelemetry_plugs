@@ -21,7 +21,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
   @spec plug() :: :ok
   def plug() do
     ETSWrapper.setup_ets_tables()
-    attach_telemetry_handlers()
+    # attach_telemetry_handlers()
     :ok
   end
 
