@@ -39,13 +39,14 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       span_id = get_launch_span_id(metadata)
       Process.put(@pdict_launch_span_id_key, span_id)
 
-      Membrane.OpenTelemetry.start_span(span_id)
+      # Membrane.OpenTelemetry.start_span(span_id)
       start_span_log(span_id)
 
       pipeline_path = ComponentPath.get()
 
-      span = Membrane.OpenTelemetry.get_span(span_id)
-      ETSWrapper.store_span(pipeline_path, span)
+      # span = Membrane.OpenTelemetry.get_span(span_id)
+      # ETSWrapper.store_span(pipeline_path, span)
+      ETSWrapper.store_span(pipeline_path, nil)
 
       ETSWrapper.store_as_parent_within_pipeline(pipeline_path, pipeline_path)
       set_launch_span_attributes(metadata)
@@ -62,14 +63,15 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       span_id = get_launch_span_id(metadata)
       Process.put(@pdict_launch_span_id_key, span_id)
 
-      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+      # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
       start_span_log(span_id)
 
-      span = Membrane.OpenTelemetry.get_span(span_id)
+      # span = Membrane.OpenTelemetry.get_span(span_id)
 
       [pipeline_name | _tail] = my_path = ComponentPath.get()
 
-      ETSWrapper.store_span(my_path, span)
+      # ETSWrapper.store_span(my_path, span)
+      ETSWrapper.store_span(my_path, nil)
       ETSWrapper.store_as_parent_within_pipeline(my_path, [pipeline_name])
       set_launch_span_attributes(metadata)
 
@@ -83,7 +85,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       span_id = get_launch_span_id(metadata)
       Process.put(@pdict_launch_span_id_key, span_id)
 
-      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+      # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
       start_span_log(span_id)
       set_launch_span_attributes(metadata)
 
@@ -120,7 +122,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_ensure_launch_span_ended() do
     with span_id when span_id != nil <- Process.delete(@pdict_launch_span_id_key) do
-      Membrane.OpenTelemetry.end_span(span_id)
+      # Membrane.OpenTelemetry.end_span(span_id)
       end_span_log(span_id)
     end
   end
@@ -130,7 +132,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
       event_attributes = get_callback_attributes(callback, metadata.callback_args)
-      Membrane.OpenTelemetry.add_event(span_id, event_name, event_attributes)
+      # Membrane.OpenTelemetry.add_event(span_id, event_name, event_attributes)
     end
 
     :ok
@@ -145,7 +147,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       ) do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
-      Membrane.OpenTelemetry.add_event(span_id, event_name, duration: duration)
+      # Membrane.OpenTelemetry.add_event(span_id, event_name, duration: duration)
     end
 
     :ok
@@ -178,13 +180,13 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp set_launch_span_attributes(metadata) do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       type = metadata |> get_type() |> inspect()
-      Membrane.OpenTelemetry.set_attribute(span_id, :component_type, type)
+      # Membrane.OpenTelemetry.set_attribute(span_id, :component_type, type)
 
       name = get_pretty_name(metadata)
-      Membrane.OpenTelemetry.set_attribute(span_id, :component_name, name)
+      # Membrane.OpenTelemetry.set_attribute(span_id, :component_name, name)
 
       module = metadata.callback_context.module |> inspect()
-      Membrane.OpenTelemetry.set_attribute(span_id, :component_module, module)
+      # Membrane.OpenTelemetry.set_attribute(span_id, :component_module, module)
     end
 
     :ok
@@ -206,10 +208,10 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp start_init_to_playing_span(metadata) do
     launch_span =
       get_launch_span_id(metadata)
-      |> Membrane.OpenTelemetry.get_span()
+      # |> Membrane.OpenTelemetry.get_span()
 
     get_init_to_playing_span_id(metadata)
-    |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)
+    # |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)
 
     get_init_to_playing_span_id(metadata)
     |> start_span_log()
@@ -219,7 +221,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp end_init_to_playing_span(metadata) do
     get_init_to_playing_span_id(metadata)
-    |> Membrane.OpenTelemetry.end_span()
+    # |> Membrane.OpenTelemetry.end_span()
 
     get_init_to_playing_span_id(metadata)
     |> end_span_log()
