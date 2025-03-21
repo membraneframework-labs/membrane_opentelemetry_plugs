@@ -88,8 +88,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
       :telemetry.attach(
         {__MODULE__, component_type, id},
         [:membrane, component_type, callback, start_or_stop],
-        fn _, _, _, _ -> :ok end,
-        # handler,
+        handler,
         nil
       )
     end)
