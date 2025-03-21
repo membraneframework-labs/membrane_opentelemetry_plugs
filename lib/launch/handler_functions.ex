@@ -24,7 +24,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
           config :: any()
         ) :: :ok
   def start_span(_name, _measurements, metadata, _config) do
-    do_start_span(metadata)
+    #do_start_span(metadata)
     :ok
   end
 
