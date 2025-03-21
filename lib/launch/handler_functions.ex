@@ -86,10 +86,10 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       Process.put(@pdict_launch_span_id_key, span_id)
 
       # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
-      start_span_log(span_id)
-      set_launch_span_attributes(metadata)
+      # start_span_log(span_id)
+      # set_launch_span_attributes(metadata)
 
-      start_init_to_playing_span(metadata)
+      # start_init_to_playing_span(metadata)
     end
   end
 
