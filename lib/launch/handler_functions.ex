@@ -83,7 +83,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     with {:ok, parent_span} <-
            get_parent_component_path() |> ETSWrapper.get_span() do
       span_id = get_launch_span_id(metadata)
-      Process.put(@pdict_launch_span_id_key, span_id)
+      # Process.put(@pdict_launch_span_id_key, span_id)
 
       # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
       # start_span_log(span_id)
