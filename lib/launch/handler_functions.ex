@@ -33,63 +33,63 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_start_span(%{component_type: :pipeline} = metadata) do
     # trick to mute dialyzer
-    tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
-
-    if tracked_pipelines == :all or metadata.callback_context.module in tracked_pipelines do
-      span_id = get_launch_span_id(metadata)
-      Process.put(@pdict_launch_span_id_key, span_id)
-
-      # Membrane.OpenTelemetry.start_span(span_id)
-      start_span_log(span_id)
-
-      pipeline_path = ComponentPath.get()
-
-      # span = Membrane.OpenTelemetry.get_span(span_id)
-      # ETSWrapper.store_span(pipeline_path, span)
-      ETSWrapper.store_span(pipeline_path, nil)
-
-      ETSWrapper.store_as_parent_within_pipeline(pipeline_path, pipeline_path)
-      set_launch_span_attributes(metadata)
-
-      start_init_to_playing_span(metadata)
-
-      Task.start(__MODULE__, :pipeline_monitor, [self(), pipeline_path])
-    end
+    # tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
+    #
+    # if tracked_pipelines == :all or metadata.callback_context.module in tracked_pipelines do
+    #   span_id = get_launch_span_id(metadata)
+    #   Process.put(@pdict_launch_span_id_key, span_id)
+    #
+    #   # Membrane.OpenTelemetry.start_span(span_id)
+    #   start_span_log(span_id)
+    #
+    #   pipeline_path = ComponentPath.get()
+    #
+    #   # span = Membrane.OpenTelemetry.get_span(span_id)
+    #   # ETSWrapper.store_span(pipeline_path, span)
+    #   ETSWrapper.store_span(pipeline_path, nil)
+    #
+    #   ETSWrapper.store_as_parent_within_pipeline(pipeline_path, pipeline_path)
+    #   set_launch_span_attributes(metadata)
+    #
+    #   start_init_to_playing_span(metadata)
+    #
+    #   Task.start(__MODULE__, :pipeline_monitor, [self(), pipeline_path])
+    # end
   end
 
   defp do_start_span(%{component_type: :bin} = metadata) do
-    with {:ok, parent_span} <-
-           get_parent_component_path() |> ETSWrapper.get_span() do
-      span_id = get_launch_span_id(metadata)
-      Process.put(@pdict_launch_span_id_key, span_id)
-
-      # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
-      start_span_log(span_id)
-
-      # span = Membrane.OpenTelemetry.get_span(span_id)
-
-      [pipeline_name | _tail] = my_path = ComponentPath.get()
-
-      # ETSWrapper.store_span(my_path, span)
-      ETSWrapper.store_span(my_path, nil)
-      ETSWrapper.store_as_parent_within_pipeline(my_path, [pipeline_name])
-      set_launch_span_attributes(metadata)
-
-      start_init_to_playing_span(metadata)
-    end
+    # with {:ok, parent_span} <-
+    #        get_parent_component_path() |> ETSWrapper.get_span() do
+    #   span_id = get_launch_span_id(metadata)
+    #   Process.put(@pdict_launch_span_id_key, span_id)
+    #
+    #   # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+    #   start_span_log(span_id)
+    #
+    #   # span = Membrane.OpenTelemetry.get_span(span_id)
+    #
+    #   [pipeline_name | _tail] = my_path = ComponentPath.get()
+    #
+    #   # ETSWrapper.store_span(my_path, span)
+    #   ETSWrapper.store_span(my_path, nil)
+    #   ETSWrapper.store_as_parent_within_pipeline(my_path, [pipeline_name])
+    #   set_launch_span_attributes(metadata)
+    #
+    #   start_init_to_playing_span(metadata)
+    # end
   end
 
   defp do_start_span(%{component_type: :element} = metadata) do
     # with {:ok, parent_span} <-
     #        get_parent_component_path() |> ETSWrapper.get_span() do
-      # span_id = get_launch_span_id(metadata)
-      # Process.put(@pdict_launch_span_id_key, span_id)
+    # span_id = get_launch_span_id(metadata)
+    # Process.put(@pdict_launch_span_id_key, span_id)
 
-      # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
-      # start_span_log(span_id)
-      # set_launch_span_attributes(metadata)
+    # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+    # start_span_log(span_id)
+    # set_launch_span_attributes(metadata)
 
-      # start_init_to_playing_span(metadata)
+    # start_init_to_playing_span(metadata)
     # end
   end
 
