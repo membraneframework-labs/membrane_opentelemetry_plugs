@@ -80,8 +80,8 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   defp do_start_span(%{component_type: :element} = metadata) do
-    with {:ok, parent_span} <-
-           get_parent_component_path() |> ETSWrapper.get_span() do
+    # with {:ok, parent_span} <-
+    #        get_parent_component_path() |> ETSWrapper.get_span() do
       # span_id = get_launch_span_id(metadata)
       # Process.put(@pdict_launch_span_id_key, span_id)
 
@@ -90,7 +90,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       # set_launch_span_attributes(metadata)
 
       # start_init_to_playing_span(metadata)
-    end
+    # end
   end
 
   @spec ensure_span_ended(:telemetry.event_name(), map(), map(), any()) :: :ok
