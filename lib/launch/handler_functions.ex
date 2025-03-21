@@ -208,7 +208,8 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp start_init_to_playing_span(metadata) do
     launch_span =
       get_launch_span_id(metadata)
-      # |> Membrane.OpenTelemetry.get_span()
+
+    # |> Membrane.OpenTelemetry.get_span()
 
     get_init_to_playing_span_id(metadata)
     # |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)
@@ -275,6 +276,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp span_log(span_id, log) do
     require Logger
+
     Logger.warning("""
     #{log}
     SPAN_ID: #{span_id}
