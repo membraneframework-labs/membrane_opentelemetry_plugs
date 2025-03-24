@@ -95,6 +95,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_start_span(other) do
     IO.inspect(other, label: :other_metadata)
+    raise "Unmatched span component type"
   end
 
   @spec ensure_span_ended(:telemetry.event_name(), map(), map(), any()) :: :ok
