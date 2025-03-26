@@ -27,8 +27,8 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
 
   @spec delete_ets_tables() :: :ok
   def delete_ets_tables() do
-    # :ets.delete(@component_path_to_span_ets)
-    # :ets.delete(@pipeline_to_parents_ets)
+    :ets.delete(@component_path_to_span_ets)
+    :ets.delete(@pipeline_to_parents_ets)
     :ok
   end
 
@@ -42,32 +42,31 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
 
   @spec store_span(ComponentPath.t(), OpenTelemetry.span_ctx()) :: :ok
   def store_span(component_path, span) do
-    # :ets.insert(@component_path_to_span_ets, {component_path, span})
+    :ets.insert(@component_path_to_span_ets, {component_path, span})
     :ok
   end
 
   @spec delete_span_and_pipeline(ComponentPath.t(), OpenTelemetry.span_ctx()) :: :ok
   def delete_span_and_pipeline(component_path, span) do
-    # :ets.delete(@component_path_to_span_ets, {component_path, span})
+    :ets.delete(@component_path_to_span_ets, {component_path, span})
     :ok
   end
 
   @spec store_as_parent_within_pipeline(ComponentPath.t(), ComponentPath.t()) :: :ok
   def store_as_parent_within_pipeline(my_component_path, pipeline_path) do
-    # :ets.insert(@pipeline_to_parents_ets, {pipeline_path, my_component_path})
+    :ets.insert(@pipeline_to_parents_ets, {pipeline_path, my_component_path})
     :ok
   end
 
   @spec get_parents_within_pipeline(ComponentPath.t()) :: [ComponentPath.t()]
   def get_parents_within_pipeline(pipeline_path) do
-    # :ets.lookup(@pipeline_to_parents_ets, pipeline_path)
-    # |> Enum.map(fn {^pipeline_path, component_path} -> component_path end)
-    "test123"
+    :ets.lookup(@pipeline_to_parents_ets, pipeline_path)
+    |> Enum.map(fn {^pipeline_path, component_path} -> component_path end)
   end
 
   @spec delete_parent_within_pipeline(ComponentPath.t(), ComponentPath.t()) :: :ok
   def delete_parent_within_pipeline(pipeline_path, parent_path) do
-    # :ets.delete(@pipeline_to_parents_ets, {pipeline_path, parent_path})
+    :ets.delete(@pipeline_to_parents_ets, {pipeline_path, parent_path})
     :ok
   end
 end
