@@ -32,71 +32,64 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_start_span(metadata)
 
   defp do_start_span(%{component_type: :pipeline} = metadata) do
-    # trick to mute dialyzer
-    # tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
-    #
-    # if tracked_pipelines == :all or metadata.callback_context.module in tracked_pipelines do
-    #   span_id = get_launch_span_id(metadata)
-    #   Process.put(@pdict_launch_span_id_key, span_id)
-    #
-    #   # Membrane.OpenTelemetry.start_span(span_id)
-    #   start_span_log(span_id)
-    #
-    #   pipeline_path = ComponentPath.get()
-    #
-    #   # span = Membrane.OpenTelemetry.get_span(span_id)
-    #   # ETSWrapper.store_span(pipeline_path, span)
-    #   ETSWrapper.store_span(pipeline_path, nil)
-    #
-    #   ETSWrapper.store_as_parent_within_pipeline(pipeline_path, pipeline_path)
-    #   set_launch_span_attributes(metadata)
-    #
-    #   start_init_to_playing_span(metadata)
-    #
-    #   Task.start(__MODULE__, :pipeline_monitor, [self(), pipeline_path])
-    # end
+    trick to mute dialyzer
+    tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
+
+    if tracked_pipelines == :all or metadata.callback_context.module in tracked_pipelines do
+      span_id = get_launch_span_id(metadata)
+      Process.put(@pdict_launch_span_id_key, span_id)
+
+      Membrane.OpenTelemetry.start_span(span_id)
+      start_span_log(span_id)
+
+      pipeline_path = ComponentPath.get()
+
+      span = Membrane.OpenTelemetry.get_span(span_id)
+      ETSWrapper.store_span(pipeline_path, span)
+
+      ETSWrapper.store_as_parent_within_pipeline(pipeline_path, pipeline_path)
+      set_launch_span_attributes(metadata)
+
+      start_init_to_playing_span(metadata)
+
+      Task.start(__MODULE__, :pipeline_monitor, [self(), pipeline_path])
+    end
   end
 
   defp do_start_span(%{component_type: :bin} = metadata) do
-    # with {:ok, parent_span} <-
-    #        get_parent_component_path() |> ETSWrapper.get_span() do
-    #   span_id = get_launch_span_id(metadata)
-    #   Process.put(@pdict_launch_span_id_key, span_id)
-    #
-    #   # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
-    #   start_span_log(span_id)
-    #
-    #   # span = Membrane.OpenTelemetry.get_span(span_id)
-    #
-    #   [pipeline_name | _tail] = my_path = ComponentPath.get()
-    #
-    #   # ETSWrapper.store_span(my_path, span)
-    #   ETSWrapper.store_span(my_path, nil)
-    #   ETSWrapper.store_as_parent_within_pipeline(my_path, [pipeline_name])
-    #   set_launch_span_attributes(metadata)
-    #
-    #   start_init_to_playing_span(metadata)
-    # end
+    with {:ok, parent_span} <-
+           get_parent_component_path() |> ETSWrapper.get_span() do
+      span_id = get_launch_span_id(metadata)
+      Process.put(@pdict_launch_span_id_key, span_id)
+
+      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+      start_span_log(span_id)
+
+      span = Membrane.OpenTelemetry.get_span(span_id)
+
+      [pipeline_name | _tail] = my_path = ComponentPath.get()
+
+      ETSWrapper.store_span(my_path, span)
+      ETSWrapper.store_as_parent_within_pipeline(my_path, [pipeline_name])
+      set_launch_span_attributes(metadata)
+
+      start_init_to_playing_span(metadata)
+    end
   end
 
   defp do_start_span(%{component_type: :element} = metadata) do
-    # with {:ok, parent_span} <-
-    #        get_parent_component_path() |> ETSWrapper.get_span() do
-    # span_id = get_launch_span_id(metadata)
-    # Process.put(@pdict_launch_span_id_key, span_id)
+    with {:ok, parent_span} <-
+           get_parent_component_path() |> ETSWrapper.get_span() do
+    span_id = get_launch_span_id(metadata)
+    Process.put(@pdict_launch_span_id_key, span_id)
 
-    # Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
-    # start_span_log(span_id)
-    # set_launch_span_attributes(metadata)
+    Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+    start_span_log(span_id)
+    set_launch_span_attributes(metadata)
 
-    # start_init_to_playing_span(metadata)
-    # end
+    start_init_to_playing_span(metadata)
+    end
   end
-
-  # defp do_start_span(other) do
-  #   IO.inspect(other, label: :other_metadata)
-  #   raise "Unmatched span component type"
-  # end
 
   @spec ensure_span_ended(:telemetry.event_name(), map(), map(), any()) :: :ok
   def ensure_span_ended(
@@ -137,7 +130,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
       event_attributes = get_callback_attributes(callback, metadata.callback_args)
-      # Membrane.OpenTelemetry.add_event(span_id, event_name, event_attributes)
+      Membrane.OpenTelemetry.add_event(span_id, event_name, event_attributes)
     end
 
     :ok
@@ -152,7 +145,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
       ) do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
-      # Membrane.OpenTelemetry.add_event(span_id, event_name, duration: duration)
+      Membrane.OpenTelemetry.add_event(span_id, event_name, duration: duration)
     end
 
     :ok
@@ -185,13 +178,13 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp set_launch_span_attributes(metadata) do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       type = metadata |> get_type() |> inspect()
-      # Membrane.OpenTelemetry.set_attribute(span_id, :component_type, type)
+      Membrane.OpenTelemetry.set_attribute(span_id, :component_type, type)
 
       name = get_pretty_name(metadata)
-      # Membrane.OpenTelemetry.set_attribute(span_id, :component_name, name)
+      Membrane.OpenTelemetry.set_attribute(span_id, :component_name, name)
 
       module = metadata.callback_context.module |> inspect()
-      # Membrane.OpenTelemetry.set_attribute(span_id, :component_module, module)
+      Membrane.OpenTelemetry.set_attribute(span_id, :component_module, module)
     end
 
     :ok
@@ -213,11 +206,10 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp start_init_to_playing_span(metadata) do
     launch_span =
       get_launch_span_id(metadata)
-
-    # |> Membrane.OpenTelemetry.get_span()
+    |> Membrane.OpenTelemetry.get_span()
 
     get_init_to_playing_span_id(metadata)
-    # |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)
+    |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)
 
     get_init_to_playing_span_id(metadata)
     |> start_span_log()
@@ -227,7 +219,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp end_init_to_playing_span(metadata) do
     get_init_to_playing_span_id(metadata)
-    # |> Membrane.OpenTelemetry.end_span()
+    |> Membrane.OpenTelemetry.end_span()
 
     get_init_to_playing_span_id(metadata)
     |> end_span_log()
