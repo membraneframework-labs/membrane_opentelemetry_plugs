@@ -32,7 +32,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_start_span(metadata)
 
   defp do_start_span(%{component_type: :pipeline} = metadata) do
-    trick to mute dialyzer
+    # trick to mute dialyzer
     tracked_pipelines = apply(__MODULE__, :tracked_pipelines, [])
 
     if tracked_pipelines == :all or metadata.callback_context.module in tracked_pipelines do
@@ -80,14 +80,14 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp do_start_span(%{component_type: :element} = metadata) do
     with {:ok, parent_span} <-
            get_parent_component_path() |> ETSWrapper.get_span() do
-    span_id = get_launch_span_id(metadata)
-    Process.put(@pdict_launch_span_id_key, span_id)
+      span_id = get_launch_span_id(metadata)
+      Process.put(@pdict_launch_span_id_key, span_id)
 
-    Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
-    start_span_log(span_id)
-    set_launch_span_attributes(metadata)
+      Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
+      start_span_log(span_id)
+      set_launch_span_attributes(metadata)
 
-    start_init_to_playing_span(metadata)
+      start_init_to_playing_span(metadata)
     end
   end
 
@@ -120,7 +120,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   defp do_ensure_launch_span_ended() do
     with span_id when span_id != nil <- Process.delete(@pdict_launch_span_id_key) do
-      # Membrane.OpenTelemetry.end_span(span_id)
+      Membrane.OpenTelemetry.end_span(span_id)
       end_span_log(span_id)
     end
   end
@@ -206,7 +206,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   defp start_init_to_playing_span(metadata) do
     launch_span =
       get_launch_span_id(metadata)
-    |> Membrane.OpenTelemetry.get_span()
+      |> Membrane.OpenTelemetry.get_span()
 
     get_init_to_playing_span_id(metadata)
     |> Membrane.OpenTelemetry.start_span(parent_span: launch_span)

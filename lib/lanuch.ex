@@ -38,7 +38,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
         :start_span,
         :handle_init,
         :start,
-        # fn _, _, _, _ -> :ok end
         &HandlerFunctions.start_span/4
       )
 
@@ -49,8 +48,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
           {callback, :start},
           callback,
           :start,
-          fn _, _, _, _ -> :ok end
-          # &HandlerFunctions.callback_start/4
+          &HandlerFunctions.callback_start/4
         )
 
       :ok =
@@ -58,8 +56,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
           {callback, :stop},
           callback,
           :stop,
-          fn _, _, _, _ -> :ok end
-          # &HandlerFunctions.callback_stop/4
+          &HandlerFunctions.callback_stop/4
         )
     end)
 
@@ -68,8 +65,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
         :maybe_end_span_on_start_of_stream,
         :handle_start_of_stream,
         :stop,
-        fn _, _, _, _ -> :ok end
-        # &HandlerFunctions.ensure_span_ended/4
+        &HandlerFunctions.ensure_span_ended/4
       )
 
     :ok =
@@ -77,8 +73,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch do
         :maybe_end_span_on_playing,
         :handle_playing,
         :stop,
-        fn _, _, _, _ -> :ok end
-        # &HandlerFunctions.maybe_end_span/4
+        &HandlerFunctions.maybe_end_span/4
       )
   end
 
