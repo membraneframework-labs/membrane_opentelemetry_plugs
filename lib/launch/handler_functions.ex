@@ -83,10 +83,12 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
     with {:ok, parent_span} <-
            get_parent_component_path() |> ETSWrapper.get_span() do
+      Logger.warning("STARTING ELEMENT SPAN2 #{ComponentPath.get() |> inspect()}")
       span_id = get_launch_span_id(metadata)
+    Logger.warning("STARTING ELEMENT SPAN3 #{ComponentPath.get() |> inspect()}")
       Process.put(@pdict_launch_span_id_key, span_id)
 
-      Logger.warning("STARTING ELEMENT SPAN2 #{ComponentPath.get() |> inspect()}")
+      Logger.warning("STARTING ELEMENT SPAN4 #{ComponentPath.get() |> inspect()}")
       Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
       start_span_log(span_id)
       set_launch_span_attributes(metadata)
