@@ -36,7 +36,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
   def get_span(component_path) do
     case :ets.lookup(@component_path_to_span_ets, component_path) do
       [{^component_path, span}] -> {:ok, span}
-      [] -> {:ok, nil}
+      [] -> :error
     end
   end
 

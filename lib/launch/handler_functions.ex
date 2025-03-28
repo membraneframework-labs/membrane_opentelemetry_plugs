@@ -78,11 +78,15 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   defp do_start_span(%{component_type: :element} = metadata) do
+    require Logger
+    Logger.warning("STARTING ELEMENT SPAN1 #{ComponentPath.get() |> inspect()}")
+
     with {:ok, parent_span} <-
            get_parent_component_path() |> ETSWrapper.get_span() do
       span_id = get_launch_span_id(metadata)
       Process.put(@pdict_launch_span_id_key, span_id)
 
+      Logger.warning("STARTING ELEMENT SPAN2 #{ComponentPath.get() |> inspect()}")
       Membrane.OpenTelemetry.start_span(span_id, parent_span: parent_span)
       start_span_log(span_id)
       set_launch_span_attributes(metadata)
@@ -103,7 +107,12 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   @spec maybe_end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def maybe_end_span([:membrane, _component_type, :handle_playing, :stop], _mesaurements, metadata, _config) do
+  def maybe_end_span(
+        [:membrane, _component_type, :handle_playing, :stop],
+        _mesaurements,
+        metadata,
+        _config
+      ) do
     end_init_to_playing_span(metadata)
 
     if get_type(metadata) in [:source, :bin, :pipeline] or only_output_pads?(metadata) do
@@ -126,7 +135,12 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   @spec callback_start(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def callback_start([:membrane, _component_type, callback, :start] = name, _measurements, metadata, _config) do
+  def callback_start(
+        [:membrane, _component_type, callback, :start] = name,
+        _measurements,
+        metadata,
+        _config
+      ) do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
       event_attributes = get_callback_attributes(callback, metadata.callback_args)
