@@ -93,7 +93,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   @spec ensure_span_ended(:telemetry.event_name(), map(), map(), any()) :: :ok
   def ensure_span_ended(
-        [:membrane, :handle_start_of_stream, :stop],
+        [:membrane, _component_type, :handle_start_of_stream, :stop],
         _mesaurements,
         _metadata,
         _config
@@ -103,7 +103,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   @spec maybe_end_span(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def maybe_end_span([:membrane, :handle_playing, :stop], _mesaurements, metadata, _config) do
+  def maybe_end_span([:membrane, _component_type, :handle_playing, :stop], _mesaurements, metadata, _config) do
     end_init_to_playing_span(metadata)
 
     if get_type(metadata) in [:source, :bin, :pipeline] or only_output_pads?(metadata) do
@@ -126,7 +126,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   end
 
   @spec callback_start(:telemetry.event_name(), map(), map(), any()) :: :ok
-  def callback_start([:membrane, callback, :start] = name, _measurements, metadata, _config) do
+  def callback_start([:membrane, _component_type, callback, :start] = name, _measurements, metadata, _config) do
     with span_id when span_id != nil <- Process.get(@pdict_launch_span_id_key) do
       event_name = name |> Enum.map_join("_", &Atom.to_string/1)
       event_attributes = get_callback_attributes(callback, metadata.callback_args)
@@ -138,7 +138,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
 
   @spec callback_stop(:telemetry.event_name(), map(), map(), any()) :: :ok
   def callback_stop(
-        [:membrane, _callback, :stop] = name,
+        [:membrane, _component_type, _callback, :stop] = name,
         %{duration: duration},
         _metadata,
         _config
