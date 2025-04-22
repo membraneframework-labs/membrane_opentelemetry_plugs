@@ -6,7 +6,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Application do
 
   @defined_plugs [Plugs.Launch]
   @plugs_in_config Application.compile_env(:membrane_opentelemetry_plugs, :plugs, [])
-  @enabled_plugs @defined_plugs |> Enum.filter(& &1 in @plugs_in_config)
+  @enabled_plugs @defined_plugs |> Enum.filter(&(&1 in @plugs_in_config))
 
   Enum.each(@plugs_in_config, fn plug ->
     if plug not in @defined_plugs do
