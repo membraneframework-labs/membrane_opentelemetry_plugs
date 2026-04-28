@@ -1,4 +1,5 @@
 defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
+  @moduledoc false
   alias Membrane.ComponentPath
 
   @component_path_to_span_ets :__membrane_opentelemetry_plugs_component_path_to_span__
@@ -32,7 +33,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
     :ok
   end
 
-  @spec get_span(ComponentPath.t()) :: {:ok, OpenTelemetry.span_ctx()} | :error
+  @spec get_span(ComponentPath.path()) :: {:ok, OpenTelemetry.span_ctx()} | :error
   def get_span(component_path) do
     case :ets.lookup(@component_path_to_span_ets, component_path) do
       [{^component_path, span}] -> {:ok, span}
@@ -40,31 +41,31 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper do
     end
   end
 
-  @spec store_span(ComponentPath.t(), OpenTelemetry.span_ctx()) :: :ok
+  @spec store_span(ComponentPath.path(), OpenTelemetry.span_ctx()) :: :ok
   def store_span(component_path, span) do
     :ets.insert(@component_path_to_span_ets, {component_path, span})
     :ok
   end
 
-  @spec delete_span_and_pipeline(ComponentPath.t(), OpenTelemetry.span_ctx()) :: :ok
+  @spec delete_span_and_pipeline(ComponentPath.path(), OpenTelemetry.span_ctx()) :: :ok
   def delete_span_and_pipeline(component_path, span) do
     :ets.delete(@component_path_to_span_ets, {component_path, span})
     :ok
   end
 
-  @spec store_as_parent_within_pipeline(ComponentPath.t(), ComponentPath.t()) :: :ok
+  @spec store_as_parent_within_pipeline(ComponentPath.path(), ComponentPath.path()) :: :ok
   def store_as_parent_within_pipeline(my_component_path, pipeline_path) do
     :ets.insert(@pipeline_to_parents_ets, {pipeline_path, my_component_path})
     :ok
   end
 
-  @spec get_parents_within_pipeline(ComponentPath.t()) :: [ComponentPath.t()]
+  @spec get_parents_within_pipeline(ComponentPath.path()) :: [ComponentPath.path()]
   def get_parents_within_pipeline(pipeline_path) do
     :ets.lookup(@pipeline_to_parents_ets, pipeline_path)
     |> Enum.map(fn {^pipeline_path, component_path} -> component_path end)
   end
 
-  @spec delete_parent_within_pipeline(ComponentPath.t(), ComponentPath.t()) :: :ok
+  @spec delete_parent_within_pipeline(ComponentPath.path(), ComponentPath.path()) :: :ok
   def delete_parent_within_pipeline(pipeline_path, parent_path) do
     :ets.delete(@pipeline_to_parents_ets, {pipeline_path, parent_path})
     :ok

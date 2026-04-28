@@ -3,7 +3,6 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
   require Membrane.OpenTelemetry
   require Membrane.Logger
 
-  alias ElixirSense.Log
   alias Membrane.ComponentPath
   alias Membrane.OpenTelemetry.Plugs.Launch.ETSWrapper
 
@@ -157,7 +156,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     :ok
   end
 
-  @spec pipeline_monitor(pid(), ComponentPath.t()) :: :ok
+  @spec pipeline_monitor(pid(), ComponentPath.path()) :: :ok
   def pipeline_monitor(pipeline_pid, pipeline_path) do
     ref = Process.monitor(pipeline_pid)
 
@@ -261,6 +260,7 @@ defmodule Membrane.OpenTelemetry.Plugs.Launch.HandlerFunctions do
     end
   end
 
+  @spec get_parent_component_path() :: [String.t()]
   def get_parent_component_path() do
     my_path = ComponentPath.get()
     {_my_name, parent_path} = List.pop_at(my_path, length(my_path) - 1)
